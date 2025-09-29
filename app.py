@@ -27,8 +27,8 @@ def init_db():
     conn.close()
 
 # Admin credentials
-ADMIN_EMAIL = st.secrets.get("ADMIN_EMAIL", "admin@admin.com")
-ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "admin123")
+ADMIN_EMAIL = "buvjapanesecultureclub@gmail.com"
+ADMIN_PASSWORD = "secretsociety"
 
 # Email config
 GMAIL_USER = st.secrets.get("GMAIL_USER", "")
