@@ -31,8 +31,9 @@ ADMIN_EMAIL = "buvjapanesecultureclub@gmail.com"
 ADMIN_PASSWORD = "secretsociety"
 
 # Email config
-GMAIL_USER = st.secrets.get("GMAIL_USER", "")
-GMAIL_APP_PASSWORD = st.secrets.get("GMAIL_APP_PASSWORD", "")
+# Email configuration
+GMAIL_USER = "buvjapanesecultureclub@gmail.com"
+GMAIL_APP_PASSWORD = "qskc sfyi kihk ygbt"
 # Database functions
 def add_time_slot(slot_date, start_time, end_time):
     conn = sqlite3.connect('interview_scheduler.db')
