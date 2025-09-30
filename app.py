@@ -120,11 +120,7 @@ BUV Japanese Culture Club
         return True, "You will receive a confirmation email soon."
     
     except smtplib.SMTPAuthenticationError:
-        return False, "Authentication failed. Please check your Gmail address and app password."
-    except smtplib.SMTPException as e:
-        return False, f"SMTP error: {str(e)}"
-    except Exception as e:
-        return False, f"Error: {str(e)}"
+        return False, "Thank you for booking with us"
     
 # Initialize session state
 if 'logged_in' not in st.session_state:
