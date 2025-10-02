@@ -100,24 +100,23 @@ def send_confirmation_email(candidate_name, candidate_email, slot_date, start_ti
         
         # Email body
         body = f"""
-Dear {candidate_name},
+Gửi bạn {candidate_name},
 
-Thank you for scheduling an interview with us!
+Sau đây là một số thông tin về buổi phỏng vấn
+- Hình thức : Phỏng vấn trực tiếp
+- Địa điểm : Sảnh nghỉ trước phòng D2-11- BUV Campus
+- Thời gian:
+📅 Ngày: {slot_date}
+🕐 Vào lúc: {start_time} - {end_time}
 
-Your interview has been successfully booked for:
+Vì không gian khu vực khá rộng
+BJC mong muốn bạn có thể nắm chắc các thông tin trên 
+để buổi phỏng vấn có thể diễn thành công và tốt đẹp.
 
-📅 Date: {slot_date}
-🕐 Time: {start_time} - {end_time}
-
-Please make sure to:
-- Join the meeting 5 minutes early
-- Have a stable internet connection
-
-If you need to reschedule or have any questions, please contact us.
-
-We look forward to meeting you!
-
-Best regards,
+Chúng mình rất mong chờ được gặp bạn ở buổi phỏng
+vấn sắp tới. Nếu có thắc mắc hay bất kì điều chỉnh nào
+hãy gửi email về địa chỉ này.
+Thân gửi,
 BUV Japanese Culture Club
 """
         
