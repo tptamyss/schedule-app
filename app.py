@@ -1,74 +1,88 @@
 import streamlit as st
-import sqlite3
 from datetime import datetime, date, time
 import pandas as pd
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import os
+import gspread
+from google.oauth2.service_account import Credentials
 
-# Initialize database
-def init_db():
-    conn = sqlite3.connect('interview_scheduler.db')
-    c = conn.cursor()
+# Initialize Google Sheets connection
+@st.cache_resource
+def init_gsheet():
+    scope = [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive'
+    ]
     
-    # Create time slots table
-    c.execute('''CREATE TABLE IF NOT EXISTS time_slots
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  slot_date TEXT NOT NULL,
-                  start_time TEXT NOT NULL,
-                  end_time TEXT NOT NULL,
-                  is_booked INTEGER DEFAULT 0,
-                  candidate_name TEXT,
-                  candidate_email TEXT,
-                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
-    
-    conn.commit()
-    conn.close()
+    try:
+        credentials = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=scope
+        )
+        
+        client = gspread.authorize(credentials)
+        
+        # Use the exact sheet name or URL
+        sheet = client.open("Interview Scheduler").sheet1
+        
+        # Initialize headers if empty
+        if sheet.row_count == 0 or sheet.cell(1, 1).value is None:
+            sheet.append_row(['id', 'slot_date', 'start_time', 'end_time', 'is_booked', 'candidate_name', 'candidate_email', 'created_at'])
+        
+        return sheet
+    except Exception as e:
+        st.error(f"Error details: {str(e)}")
+        raise
 
 # Admin credentials
 ADMIN_EMAIL = "buvjapanesecultureclub@gmail.com"
 ADMIN_PASSWORD = "secretsociety"
 
 # Email config
-# Email configuration
 GMAIL_USER = "buvjapanesecultureclub@gmail.com"
 GMAIL_APP_PASSWORD = "qskc sfyi kihk ygbt"
-# Database functions
+
 def add_time_slot(slot_date, start_time, end_time):
-    conn = sqlite3.connect('interview_scheduler.db')
-    c = conn.cursor()
-    c.execute("INSERT INTO time_slots (slot_date, start_time, end_time) VALUES (?, ?, ?)",
-              (slot_date, start_time, end_time))
-    conn.commit()
-    conn.close()
+    sheet = init_gsheet()
+    all_records = sheet.get_all_records()
+    new_id = len(all_records) + 1
+    created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    sheet.append_row([new_id, slot_date, start_time, end_time, 0, '', '', created_at])
 
 def get_available_slots():
-    conn = sqlite3.connect('interview_scheduler.db')
-    df = pd.read_sql_query("SELECT * FROM time_slots WHERE is_booked = 0 ORDER BY slot_date, start_time", conn)
-    conn.close()
+    sheet = init_gsheet()
+    data = sheet.get_all_records()
+    df = pd.DataFrame(data)
+    if len(df) > 0:
+        df = df[df['is_booked'] == 0].sort_values(['slot_date', 'start_time'])
     return df
 
 def get_all_slots():
-    conn = sqlite3.connect('interview_scheduler.db')
-    df = pd.read_sql_query("SELECT * FROM time_slots ORDER BY slot_date, start_time", conn)
-    conn.close()
+    sheet = init_gsheet()
+    data = sheet.get_all_records()
+    df = pd.DataFrame(data)
+    if len(df) > 0:
+        df = df.sort_values(['slot_date', 'start_time'])
     return df
 
 def book_slot(slot_id, candidate_name, candidate_email):
-    conn = sqlite3.connect('interview_scheduler.db')
-    c = conn.cursor()
-    c.execute("UPDATE time_slots SET is_booked = 1, candidate_name = ?, candidate_email = ? WHERE id = ?",
-              (candidate_name, candidate_email, slot_id))
-    conn.commit()
-    conn.close()
+    sheet = init_gsheet()
+    all_records = sheet.get_all_records()
+    for idx, record in enumerate(all_records, start=2):  # Start at 2 because row 1 is headers
+        if record['id'] == slot_id:
+            sheet.update_cell(idx, 5, 1)  # is_booked column
+            sheet.update_cell(idx, 6, candidate_name)
+            sheet.update_cell(idx, 7, candidate_email)
+            break
 
 def delete_slot(slot_id):
-    conn = sqlite3.connect('interview_scheduler.db')
-    c = conn.cursor()
-    c.execute("DELETE FROM time_slots WHERE id = ?", (slot_id,))
-    conn.commit()
-    conn.close()
+    sheet = init_gsheet()
+    all_records = sheet.get_all_records()
+    for idx, record in enumerate(all_records, start=2):
+        if record['id'] == slot_id:
+            sheet.delete_rows(idx)
+            break
 
 def send_confirmation_email(candidate_name, candidate_email, slot_date, start_time, end_time):
     """Send confirmation email to candidate"""
@@ -128,8 +142,11 @@ if 'logged_in' not in st.session_state:
 if 'user_type' not in st.session_state:
     st.session_state.user_type = None
 
-# Initialize database
-init_db()
+# Initialize Google Sheets
+try:
+    init_gsheet()
+except Exception as e:
+    st.error(f"Failed to connect to Google Sheets: {e}")
 
 # Main app
 st.title("📅 BUV Japanese Culture Club Interview Schedule")
@@ -282,9 +299,8 @@ elif st.session_state.logged_in and st.session_state.user_type == "candidate":
                 if st.button("Confirm Booking", type="primary"):
                     if candidate_name and candidate_email:
                         # Get slot details before booking
-                        conn = sqlite3.connect('interview_scheduler.db')
-                        slot_details = pd.read_sql_query(f"SELECT * FROM time_slots WHERE id = {st.session_state.selected_slot}", conn)
-                        conn.close()
+                        all_slots_df = get_all_slots()
+                        slot_details = all_slots_df[all_slots_df['id'] == st.session_state.selected_slot]
                         
                         if len(slot_details) > 0:
                             slot = slot_details.iloc[0]
